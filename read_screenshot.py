@@ -10,7 +10,8 @@ from common import Rectangle, Point
 import tesserocr
 
 tessapi = tesserocr.PyTessBaseAPI(psm=tesserocr.PSM.SINGLE_LINE)
-def ocr_line(im):
+def ocr_line(im, chars):
+    tessapi.SetVariable("tessedit_char_whitelist", chars);
     tessapi.SetImage(im)
     tessapi.SetPageSegMode(tesserocr.PSM.SINGLE_LINE)
     return tessapi.GetUTF8Text()
@@ -43,35 +44,34 @@ def read_cp(im):
     txtim = im.crop(CPBounds.to_bounds()).convert('L')
     lut = [0] * 250 + [255] * 6
     txtim = txtim.point(lut)
-    line = ocr_line(txtim).replace(' ', '').strip().upper()
-    line = line.replace('I', '1').replace('O', '0')
+    line = ocr_line(txtim, 'CP0123456789').replace(' ', '').strip().upper()
     line = line.lstrip('C').lstrip('P')
     return int(line)
 
 def read_hp(im):
     txtim = im.crop(HPBounds.to_bounds()).convert('L')
-    line = ocr_line(txtim).replace(' ', '').strip().upper()
-    line = line.replace('I', '1').replace('O', '0')
+    line = ocr_line(txtim, 'HP0123456789/').replace(' ', '').strip().upper()
     line = line.lstrip('H').lstrip('P')
     curhp, maxhp = line.split('/')
     return int(curhp), int(maxhp)
 
 def read_dust(im):
     txtim = im.crop(DustBounds.to_bounds()).convert('L')
-    line = ocr_line(txtim).replace(' ', '').strip().upper()
-    line = line.replace('I', '1').replace('O', '0')
+    line = ocr_line(txtim, '0123456789').replace(' ', '').strip().upper()
     return int(line)
 
 def read_species(im):
+    # We can't *directly* observe the species, so we piece it together
+    # from the candy (family) name and the evolve candy required.
     txtim = im.crop(CandyNameBounds.to_bounds()).convert('L')
-    line = ocr_line(txtim)
+    line = ocr_line(txtim, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     family = line.strip().replace(' ', '')[:-5].upper().title()
 
     # Deal with special-case family names
     if family.startswith('Nidoran'):
-        if family[7] == 'o' or '7' in family:
+        if 'z' in family:
             family = u'Nidoran♂'
-        elif family[7] == 'q' or '5' in family:
+        elif family[7] == 'q':
             family = u'Nidoran♀'
         else:
             raise ValueError("can't figure out nidoran gender: %r" % family)
@@ -79,11 +79,13 @@ def read_species(im):
         family = u"Farfetch'd"
     elif family.startswith('Mr') and 'ime' in family:
         family = u'Mr. Mime'
+    elif family == 'Ratfata':
+        family = u'Rattata'
 
     # Deal with the Eevee multi-evolve
     if family == 'Eevee':
         txtim = im.crop(TypeBounds.to_bounds()).convert('L')
-        line = ocr_line(txtim)
+        line = ocr_line(txtim, 'NormalWaterFireElectric')
         line = line.strip().replace(' ', '').upper().title()
         if line == 'Normal':
             return u'Eevee'
@@ -100,7 +102,7 @@ def read_species(im):
         candy = 0
     else:
         txtim = im.crop(EvolveCandyBounds.to_bounds()).convert('L')
-        line = ocr_line(txtim)
+        line = ocr_line(txtim, '0123456789')
         line = line.strip().replace(' ', '').upper().replace('O', '0')
         # Deal with occlusion from the big button...
         line = line[:2]
