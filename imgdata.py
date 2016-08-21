@@ -10,7 +10,7 @@ StatusBarHeight = 0
 ErrorMsgHeight = 163
 
 MeterBounds = Rectangle(118, 285, 1006, 503)
-MeterBallRadius = 12 # slight underestimate
+MeterBallRadius = 10 # slight underestimate
 
 CPBounds = Rectangle(364, 121, 480, 126)
 HPBounds = Rectangle(314, 1162, 618, 62)

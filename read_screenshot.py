@@ -11,6 +11,8 @@ import tesserocr
 
 tessapi = tesserocr.PyTessBaseAPI(psm=tesserocr.PSM.SINGLE_LINE)
 def ocr_line(im, chars):
+    # avoid Tesseract trying to "learn" anything
+    tessapi.InitFull()
     tessapi.SetVariable("tessedit_char_whitelist", chars);
     tessapi.SetImage(im)
     tessapi.SetPageSegMode(tesserocr.PSM.SINGLE_LINE)
@@ -35,7 +37,7 @@ def read_level(im, trainer_level):
         # count white pixels in neighborhood
         simg = im.crop((center.x-ballr, center.y-ballr,
                         center.x+ballr+1, center.y+ballr+1))
-        count = sum(simg.convert('L').histogram()[250:])
+        count = sum(simg.convert('L').histogram()[255:])
         # test to see if enough white pixels exist
         if count >= 0.90 * (ballr * ballr * math.pi):
             return (hlvl + 2) / 2
@@ -45,8 +47,11 @@ def read_cp(im):
     lut = [0] * 250 + [255] * 6
     txtim = txtim.point(lut)
     line = ocr_line(txtim, 'CP0123456789').replace(' ', '').strip().upper()
-    line = line.lstrip('C').lstrip('P')
-    return int(line)
+    if line.startswith('CP'):
+        return int(line[2:])
+    else:
+        print("Warning: possible OCR fail on %s" % line)
+        return int(line[2:])
 
 def read_hp(im):
     txtim = im.crop(HPBounds.to_bounds()).convert('L')
@@ -60,7 +65,7 @@ def read_dust(im):
     line = ocr_line(txtim, '0123456789').replace(' ', '').strip().upper()
     return int(line)
 
-def read_species(im):
+def read_family(im):
     # We can't *directly* observe the species, so we piece it together
     # from the candy (family) name and the evolve candy required.
     txtim = im.crop(CandyNameBounds.to_bounds()).convert('L')
@@ -81,6 +86,13 @@ def read_species(im):
         family = u'Mr. Mime'
     elif family == 'Ratfata':
         family = u'Rattata'
+
+    if family not in PokemonByName:
+        raise KeyError("recognized family name %s is invalid" % family)
+
+    return family
+
+def read_species(im, family):
 
     # Deal with the Eevee multi-evolve
     if family == 'Eevee':
@@ -106,6 +118,7 @@ def read_species(im):
         line = line.strip().replace(' ', '').upper().replace('O', '0')
         # Deal with occlusion from the big button...
         line = line[:2]
+        line = line.replace('9', '0') # occasional failures due to button occlusion
         if line == '10':
             candy = 100
         elif line == '40':
@@ -116,11 +129,13 @@ def read_species(im):
     return PokemonById[famdat[candy]]['name']
 
 def read_data(im, trainer_level):
+    family = read_family(im)
     return {'level': read_level(im, trainer_level),
             'cp': read_cp(im),
             'hp': read_hp(im),
             'dust': read_dust(im),
-            'species': read_species(im)}
+            'family': family,
+            'species': read_species(im, family)}
 
 def parse_args(argv):
     import argparse
