@@ -2,6 +2,11 @@ from __future__ import print_function, division
 
 import itertools
 from pokedata import *
+import multiprocessing
+
+import read_screenshot
+from PIL import Image
+import sys
 
 def find_ivs(pokemon):
     cpm = LevelStats[int(round(pokemon['level'] * 2 - 2))]["cpmulti"]
@@ -27,17 +32,35 @@ def parse_args(argv):
     parser.add_argument('imgs', nargs='+', help='image filenames')
     return parser.parse_args(argv)
 
-def main(argv):
-    import read_screenshot
-    from PIL import Image
+class FileProcessor:
+    def __init__(self, level):
+        self.level = level
 
+    def process_file(self, imfn):
+        print(imfn, file=sys.stderr)
+        pokemon = read_screenshot.read_data(Image.open(imfn), self.level)
+        res = imfn + ","
+        res += "{species},{cp},{hp[1]},{level},{dust},{family}".format(**pokemon) + ","
+        ivs = list(find_ivs(pokemon))
+        ivs.sort(key=sum)
+        if not ivs:
+            res += ",,,"
+        else:
+            res += "{0:.1f},{1:.1f},{2[0]},{2[1]},{2[2]},{3[0]},{3[1]},{3[2]}".format(
+                sum(ivs[0]) / 45.0 * 100.0,
+                sum(ivs[-1]) / 45.0 * 100.0,
+                ivs[0],
+                ivs[-1])
+        return res
+
+def main(argv):
     args = parse_args(argv)
 
-    for imfn in args.imgs:
-        pokemon = read_screenshot.read_data(Image.open(imfn), args.level)
-        print(imfn, pokemon)
-        for iv in find_ivs(pokemon):
-            print('    %.1f%%: %s' % (sum(iv) / 45.0 * 100.0, iv))
+    pool = multiprocessing.Pool()
+
+    print("filename,species,cp,maxhp,level,dust,family,minperf,maxperf,miniv_a,miniv_d,miniv_s,maxiv_a,maxiv_d,maxiv_s")
+    for row in pool.map(FileProcessor(args.level).process_file, args.imgs):
+        print(row)
 
 if __name__ == '__main__':
     import sys

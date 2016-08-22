@@ -8,6 +8,7 @@ from imgdata import *
 from pokedata import *
 from common import Rectangle, Point
 import tesserocr
+import sys
 
 tessapi = tesserocr.PyTessBaseAPI(psm=tesserocr.PSM.SINGLE_LINE)
 def ocr_line(im, chars):
@@ -50,7 +51,7 @@ def read_cp(im):
     if line.startswith('CP'):
         return int(line[2:])
     else:
-        print("Warning: possible OCR fail on %s" % line)
+        print("Warning: possible OCR fail on %s" % line, file=sys.stderr)
         return int(line[2:])
 
 def read_hp(im):
