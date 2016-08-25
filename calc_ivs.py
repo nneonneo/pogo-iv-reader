@@ -32,25 +32,34 @@ def parse_args(argv):
     parser.add_argument('imgs', nargs='+', help='image filenames')
     return parser.parse_args(argv)
 
-class FileProcessor:
+class FileProcessor(object):
     def __init__(self, level):
         self.level = level
 
     def process_file(self, imfn):
         print(imfn, file=sys.stderr)
-        pokemon = read_screenshot.read_data(Image.open(imfn), self.level)
         res = imfn + ","
+
+        try:
+            pokemon = read_screenshot.read_data(Image.open(imfn), self.level)
+        except:
+            return res
+
         res += "{species},{cp},{hp[1]},{level},{dust},{family}".format(**pokemon) + ","
-        ivs = list(find_ivs(pokemon))
+        try:
+            ivs = list(find_ivs(pokemon))
+        except:
+            return res
         ivs.sort(key=sum)
         if not ivs:
             res += ",,,"
         else:
-            res += "{0:.1f},{1:.1f},{2[0]},{2[1]},{2[2]},{3[0]},{3[1]},{3[2]}".format(
+            res += "{0:.1f},{1:.1f},{2[0]},{2[1]},{2[2]},{3[0]},{3[1]},{3[2]},\"{4}\"".format(
                 sum(ivs[0]) / 45.0 * 100.0,
                 sum(ivs[-1]) / 45.0 * 100.0,
                 ivs[0],
-                ivs[-1])
+                ivs[-1],
+                ivs)
         return res
 
 def main(argv):
@@ -58,7 +67,7 @@ def main(argv):
 
     pool = multiprocessing.Pool()
 
-    print("filename,species,cp,maxhp,level,dust,family,minperf,maxperf,miniv_a,miniv_d,miniv_s,maxiv_a,maxiv_d,maxiv_s")
+    print("filename,species,cp,maxhp,level,dust,family,minperf,maxperf,miniv_a,miniv_d,miniv_s,maxiv_a,maxiv_d,maxiv_s,ivs")
     for row in pool.map(FileProcessor(args.level).process_file, args.imgs):
         print(row)
 
