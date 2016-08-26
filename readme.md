@@ -4,7 +4,7 @@ This project aims to automatically determine the stats and IVs of a Pokemon give
 
 The real timesink is, unfortunately, taking screenshots of every one of your Pokemon. On my iPhone, that takes roughly one minute per 20 Pokemon. It's faster than keying data into an overlay or a text file, but it still takes some time.
 
-Currently, it works with the iPhone 6S Plus because that's the only phone I have at the moment. Resizing screenshots to the iPhone size (width 1242 pixels) should work, but I haven't tested that at all.
+Currently, it only works with the iPhone 6S Plus because that's the only phone I have at the moment. Resizing screenshots to the iPhone size (width 1242 pixels) should work, but I haven't tested that at all. It should be portable to other devices with some minor tweaks - let me know if you have clean screenshots for other screen sizes.
 
 ## Taking Screenshots
 
